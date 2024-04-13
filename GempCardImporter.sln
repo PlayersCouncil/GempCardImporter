@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31129.286
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GempCardImporter", "GempCardImporter\GempCardImporter.csproj", "{E93DB85B-36A5-412B-B1E7-1749CFDA5468}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeneratorCSVHandler", "GeneratorCSVHandler\GeneratorCSVHandler.csproj", "{56237E5E-5DD4-4043-AF60-FEA97612C34F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E93DB85B-36A5-412B-B1E7-1749CFDA5468}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E93DB85B-36A5-412B-B1E7-1749CFDA5468}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E93DB85B-36A5-412B-B1E7-1749CFDA5468}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E93DB85B-36A5-412B-B1E7-1749CFDA5468}.Release|Any CPU.Build.0 = Release|Any CPU
+		{56237E5E-5DD4-4043-AF60-FEA97612C34F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56237E5E-5DD4-4043-AF60-FEA97612C34F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56237E5E-5DD4-4043-AF60-FEA97612C34F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56237E5E-5DD4-4043-AF60-FEA97612C34F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {534A1961-3670-467E-BB56-D22F39A0AB71}
+	EndGlobalSection
+EndGlobal
