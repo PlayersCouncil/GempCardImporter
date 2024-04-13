@@ -132,7 +132,12 @@ namespace GeneratorCSVHandler
 
 		public string GetGempID(bool errata, bool playtest)
 		{
-			return $"{Regex.Replace(GetSet(set_num, errata, playtest), @"^0*", "")}_{card_num}";
+			String set = GetSet(set_num, errata, playtest);
+
+			if(set == "00")
+                return $"0_{card_num}";
+
+            return $"{Regex.Replace(set, @"^0*", "")}_{card_num}";
 		}
 
 		public static Dictionary<string, string> CultureSides = new Dictionary<string, string>()

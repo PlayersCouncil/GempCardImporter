@@ -13,34 +13,31 @@ namespace GempCardImporter
 {
 	public class CardFileGenerator
 	{
-		public static bool Errata = true;
-		public static bool Playtest = true;
+		public static bool Errata = false;
+		public static bool Playtest = false;
 
 		public static string GetJsonObject(CardRow card)
 		{
 			string json = $@"
 	XXGEMPIDXX: {{
 		cardInfo: {{
-			//Either a full URL, or a subpath for the PC image server
 			imagePath: XXIMAGEPATHXX
-			//If this is true, then all gameplay-related info outside this cardInfo definition
-			// will be ignored and the java class loaded instead.
-			javaClass: false
-			//This instructs the blueprint generator to insert this card as an alt of the listed
-			// parent blueprint. Can of course be ommitted if not an errata or promo.
+			javaClass: {(Errata || Playtest ? "false" : "true")}
+";
+			if(Errata || Playtest)
+			{
+				json += $@"
 			parent: XXPARENTIDXX
-			//This is the tree path to use within the alts structure on the parent.
-			// Can of course be ommitted if parent is null. 
 			parentPath: {(Errata ? "errata/pc" : "promos/placeholder")}
-			//Versioning differentiates releases within a particular alt path, such as PC errata
-			// version 1 vs version 2.  PC version 2 will not conflict with, say, Decipher version 2.
-			//Top-level cards should always be version 0.
+";
+			}
+			
+			json += $@"
 			version: XXVERSIONXX
 			collInfo: {card.CollectorsInfo}
 			rarity: {card.rarity}
 			setNum: ""{card.set_num}""
 			cardNum: {card.card_num}
-			// Standard, Masterwork, Tengwar, FullArt, etc.  Top-level cards are always Standard.
 			style: Standard
 		}}
 
@@ -50,7 +47,7 @@ namespace GempCardImporter
 {(card.Side != null ? $"\t\tside: {card.Side}" : "")}
 {(card.HasCulture() ? $"\t\tculture: {card.SanitizedCulture}" : "")}
 		twilight: {(card.twilight.HasValue ? card.twilight : 0)}
-		type: {(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower().FirstCharUpper() : card.card_type.ToLower().Replace("sanctuary", "site")).FirstCharUpper()}";
+		type: {(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower().Replace("onering", "The One Ring").FirstCharUpper() : card.card_type.ToLower().Replace("sanctuary", "site")).FirstCharUpper()}";
 
 			switch (String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower())
 			{
@@ -205,10 +202,8 @@ namespace GempCardImporter
 		lore: {(!String.IsNullOrWhiteSpace(card.lore) ? CardRow.SanitizeNanDECKString(card.lore) : "\"\"")}
 		promotext: {(!String.IsNullOrWhiteSpace(card.promo_text) ? CardRow.SanitizeNanDECKString(card.promo_text) : "\"\"")}
 		alts: {{
-			//These are just CardInfo objects
 			promos: {{
 			}}
-			//These are full card definitions, with redundant info that is the same as the original card ommitted
 			errata: {{
 			}}
 		}}
@@ -229,7 +224,8 @@ namespace GempCardImporter
 			}
 			else
             {
-				java += $"package com.gempukku.lotro.cards.unofficial.pc.vsets.set_v0{card.set_num.ToLower().Replace("v", "")};\n\n";
+                //java += $"package com.gempukku.lotro.cards.official.set{CardRow.GetSet(card.set_num, false, false)};\n\n";
+                java += $"package com.gempukku.lotro.cards.unofficial.pc.vsets.set_v0{card.set_num.ToLower().Replace("v", "")};\n\n";
 			}
 			java += $@"
 import com.gempukku.lotro.cards.GenericCardTestHelper;
@@ -244,7 +240,7 @@ import java.util.HashMap;
 
 import static org.junit.Assert.*;
 
-public class Card_{card.set_num}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests
+public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests
 {{
 
 	protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {{
@@ -289,10 +285,10 @@ public class Card_{card.set_num}_{card.card_num.Value.ToString("000")}_{(Errata 
 
 		assert{(card.IsUnique ? "True" : "False")}(card.getBlueprint().isUnique());
 		{(!card.HasCulture() ? "//" : "")}assertEquals(Side.{GetSideEnum(card)}, card.getBlueprint().getSide());
-		{(!card.HasCulture() ? "//" : "")}assertEquals(Culture.{card.SanitizedCulture.ToUpper()}, card.getBlueprint().getCulture());
-		assertEquals(CardType.{(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower()).Replace(" ", "_").ToUpper().Replace("SANCTUARY", "SITE")}, card.getBlueprint().getCardType());
-		{(!card.IsCharacter ? "//" : "")}assertEquals(Race.{card.card_subtype.ToUpper().Replace("-", "_")}, card.getBlueprint().getRace());
-		{(!card.IsItem ? "//" : "")}assertTrue(card.getBlueprint().getPossessionClasses().contains(PossessionClass.{card.card_subtype.ToUpper().Replace(" ", "_")}));
+		{(!card.HasCulture() ? "//" : "")}assertEquals(Culture.{card.SanitizedCulture.ToUpper().Replace("-", "_")}, card.getBlueprint().getCulture());
+		assertEquals(CardType.{(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower()).Replace("onering", "THE_ONE_RING").Replace(" ", "_").ToUpper().Replace("SANCTUARY", "SITE")}, card.getBlueprint().getCardType());
+		{(!card.IsCharacter || String.IsNullOrWhiteSpace(card.card_subtype) ? "//" : "")}assertEquals(Race.{card.card_subtype.ToUpper().Replace("Û", "U").Replace("-", "_")}, card.getBlueprint().getRace());
+		{(!card.IsItem || String.IsNullOrWhiteSpace(card.card_subtype) || card.card_subtype.ToLower().Contains("support") ? "//" : "")}assertTrue(card.getBlueprint().getPossessionClasses().contains(PossessionClass.{card.card_subtype.ToUpper().Replace(" ", "_")}));
 		assertTrue(scn.HasKeyword(card, Keyword.SUPPORT_AREA));
 		{(!card.twilight.HasValue ? "//" : "")}assertEquals({card.twilight}, card.getBlueprint().getTwilightCost());
 		{(!card.strength.HasValue ? "//" : "")}assertEquals({card.strength}, card.getBlueprint().getStrength());
@@ -455,9 +451,10 @@ public class Card_{card.set_num}_{card.card_num.Value.ToString("000")}_{(Errata 
 				if (String.IsNullOrWhiteSpace(card.title))
 					continue;
 
-				string set = $"set{CardRow.GetSet(card.set_num, false, false)}";
+				string setNum = CardRow.GetSet(card.set_num, false, false);
+                string set = $"set{setNum}";
 				string java = GetJavaTestFile(card);
-				File.WriteAllText(Path.Combine(path, "tests",  $"Card_{card.set_num}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests.java"), java);
+				File.WriteAllText(Path.Combine(path, "tests",  $"Card_{setNum}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests.java"), java);
 
 				string wiki = GetWikiErrataFile(card);
 				File.WriteAllText(Path.Combine(path, "wiki", $"{card.id}.txt"), wiki);
