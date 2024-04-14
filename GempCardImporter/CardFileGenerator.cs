@@ -38,7 +38,11 @@ namespace GempCardImporter
 			if (String.IsNullOrWhiteSpace(input))
 				return "";
 
-			return input.ToUpper().Replace(" ", "_").Replace("-", "_");
+			string output = input.ToUpper();
+            output = Regex.Replace(output, @"[ +]*\d+", "");
+            output = Regex.Replace(output, @"[ -]", "_");
+
+            return output;
 		}
 
 		private static String ApplyDynamicArray(string json, string fieldName, string defaultItem, List<string> items)
@@ -279,14 +283,14 @@ namespace GempCardImporter
 		{
 			string java = "";
 
-			if(Errata)
-            {
+			if (Errata)
+			{
 				java += $"package com.gempukku.lotro.cards.unofficial.pc.errata.set{CardRow.GetSet(card.set_num, false, false)};\n\n";
 			}
 			else
-            {
-                java += $"package com.gempukku.lotro.cards.official.set{CardRow.GetSet(card.set_num, false, false)};\n\n";
-                //java += $"package com.gempukku.lotro.cards.unofficial.pc.vsets.set_v0{card.set_num.ToLower().Replace("v", "")};\n\n";
+			{
+				java += $"package com.gempukku.lotro.cards.official.set{CardRow.GetSet(card.set_num, false, false)};\n\n";
+				//java += $"package com.gempukku.lotro.cards.unofficial.pc.vsets.set_v0{card.set_num.ToLower().Replace("v", "")};\n\n";
 			}
 			java += $@"
 import com.gempukku.lotro.cards.GenericCardTestHelper;
@@ -318,7 +322,7 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 	}}
 
 	@Test
-	public void {Regex.Replace(card.title, @"[^A-Za-z]", "")}StatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {{
+	public void {card.NormalizedTitle}StatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {{
 
 		/**
 		* Set: {card.set_num}
@@ -341,8 +345,19 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 
 		var card = scn.GetFreepsCard(""card"");
 
-		assertEquals(""{card.title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}"", card.getBlueprint().getTitle());
-		assertEquals(""{card.subtitle}"", card.getBlueprint().getSubtitle());
+		assertEquals(""{card.title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}"", card.getBlueprint().getTitle());";
+			if(String.IsNullOrWhiteSpace(card.subtitle))
+			{
+				java += $@"
+		assertNull(card.getBlueprint().getSubtitle());";
+			}
+			else
+			{
+                java += $@"
+		assertEquals(""{card.subtitle}"", card.getBlueprint().getSubtitle());";
+            }
+
+            java += $@"
 		assert{(card.IsUnique ? "True" : "False")}(card.getBlueprint().isUnique());
 		assertEquals(CardType.{(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower()).Replace("onering", "THE_ONE_RING").Replace(" ", "_").ToUpper().Replace("SANCTUARY", "SITE")}, card.getBlueprint().getCardType());";
 
@@ -361,7 +376,7 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 		assertEquals(Race.{Enumify(card.card_subtype).Replace("Û", "U")}, card.getBlueprint().getRace());";
 			}
 
-			if(card.IsItem && (!String.IsNullOrWhiteSpace(card.card_subtype) || card.SupportKeywords().Any(x => x.ToLower().Contains("support"))))
+			if(card.IsItem && !String.IsNullOrWhiteSpace(card.card_subtype) && !card.card_subtype.ToLower().Contains("support"))
 			{
                 java += $@"
 		assertTrue(card.getBlueprint().getPossessionClasses().contains(PossessionClass.{Enumify(card.card_subtype)}));";
@@ -379,6 +394,12 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 				{
                     java += $@"
 		assertTrue(scn.HasKeyword(card, Keyword.{Enumify(keyword)}));";
+					if(Regex.IsMatch(keyword, @"\d"))
+					{
+						java += $@"
+		assertEquals({Regex.Replace(keyword, @"\D", "")}, scn.GetKeywordCount(card, Keyword.{Enumify(keyword)}));";
+
+                    }
                 }
 			}
 
@@ -450,7 +471,7 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 
 	// Uncomment any @Test markers below once this is ready to be used
 	//@Test
-	public void {Regex.Replace(card.title, @"[^A-Za-z]", "")}Test1() throws DecisionResultInvalidException, CardNotFoundException {{
+	public void {card.NormalizedTitle}Test1() throws DecisionResultInvalidException, CardNotFoundException {{
 		//Pre-game setup
 		var scn = GetScenario();
 

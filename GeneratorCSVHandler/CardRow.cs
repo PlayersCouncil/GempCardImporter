@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -203,21 +204,45 @@ namespace GeneratorCSVHandler
 		public string image_name { get; set; }
 		public string unique { get; set; }
 		public bool IsUnique => unique == "T" || unique == "Y";
-		public string FullName
+        private static string RemoveDiacritics(string text)
+        {
+            var normalizedString = text.Normalize(NormalizationForm.FormD);
+            var stringBuilder = new StringBuilder(capacity: normalizedString.Length);
+
+            for (int i = 0; i < normalizedString.Length; i++)
+            {
+                char c = normalizedString[i];
+                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+                {
+                    stringBuilder.Append(c);
+                }
+            }
+
+            return stringBuilder
+                .ToString()
+                .Normalize(NormalizationForm.FormC);
+        }
+
+        public string FullName
 		{
 			get
 			{
-				if (!String.IsNullOrWhiteSpace(subtitle))
+				var strippedTitle = title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ");
+
+                if (!String.IsNullOrWhiteSpace(subtitle))
 				{
-					return $"{title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}, {subtitle}";
+					return $"{strippedTitle}, {subtitle}";
 				}
 
-				return $"{title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}";
+				return strippedTitle;
 			}
 		}
 		public string title { get; set; }
-		public string subtitle { get; set; }
-		public string culture { get; set; }
+		public string NormalizedTitle => Regex.Replace(RemoveDiacritics(title), @"[^A-Za-z]", "");
+
+        public string subtitle { get; set; }
+        public string culture { get; set; }
 		public string Side
 		{
 			get
