@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -14,9 +15,9 @@ namespace GeneratorCSVHandler
 		public static Dictionary<string, string> SetMap = new Dictionary<string, string>()
 		{
 			["V0"] = "100",
-            ["V1"] = "101",
-            ["V2"] = "102",
-            ["0"] = "00",
+			["V1"] = "101",
+			["V2"] = "102",
+			["0"] = "00",
 			["1"] = "01",
 			["2"] = "02",
 			["3"] = "03",
@@ -42,8 +43,8 @@ namespace GeneratorCSVHandler
 		{
 			["V0"] = "100",
 			["V1"] = "101",
-            ["V2"] = "102",
-            ["0"] = "50",
+			["V2"] = "102",
+			["0"] = "50",
 			["1"] = "51",
 			["2"] = "52",
 			["3"] = "53",
@@ -65,42 +66,42 @@ namespace GeneratorCSVHandler
 			["19"] = "69",
 		};
 
-        public static Dictionary<string, string> PlaytestSetMap = new Dictionary<string, string>()
-        {
-            ["V0"] = "150",
-            ["V1"] = "151",
-            ["V2"] = "152",
-            ["0"] = "70",
-            ["1"] = "71",
-            ["2"] = "72",
-            ["3"] = "73",
-            ["4"] = "74",
-            ["5"] = "75",
-            ["6"] = "76",
-            ["7"] = "77",
-            ["8"] = "78",
-            ["9"] = "79",
-            ["10"] = "80",
-            ["11"] = "81",
-            ["12"] = "82",
-            ["13"] = "83",
-            ["14"] = "84",
-            ["15"] = "85",
-            ["16"] = "86",
-            ["17"] = "87",
-            ["18"] = "88",
-            ["19"] = "89",
+		public static Dictionary<string, string> PlaytestSetMap = new Dictionary<string, string>()
+		{
+			["V0"] = "150",
+			["V1"] = "151",
+			["V2"] = "152",
+			["0"] = "70",
+			["1"] = "71",
+			["2"] = "72",
+			["3"] = "73",
+			["4"] = "74",
+			["5"] = "75",
+			["6"] = "76",
+			["7"] = "77",
+			["8"] = "78",
+			["9"] = "79",
+			["10"] = "80",
+			["11"] = "81",
+			["12"] = "82",
+			["13"] = "83",
+			["14"] = "84",
+			["15"] = "85",
+			["16"] = "86",
+			["17"] = "87",
+			["18"] = "88",
+			["19"] = "89",
 
-        };
+		};
 
-        public static Dictionary<string, string> PathSetMap = new Dictionary<string, string>()
-        {
-            ["V0"] = "vset0",
-            ["V1"] = "vset1",
-            ["V2"] = "V2",
-        };
+		public static Dictionary<string, string> PathSetMap = new Dictionary<string, string>()
+		{
+			["V0"] = "vset0",
+			["V1"] = "vset1",
+			["V2"] = "V2",
+		};
 
-        public static string GetSet(string set, bool errata, bool playtest)
+		public static string GetSet(string set, bool errata, bool playtest)
 		{
 			if (errata && playtest)
 			{
@@ -134,10 +135,10 @@ namespace GeneratorCSVHandler
 		{
 			String set = GetSet(set_num, errata, playtest);
 
-			if(set == "00")
-                return $"0_{card_num}";
+			if (set == "00")
+				return $"0_{card_num}";
 
-            return $"{Regex.Replace(set, @"^0*", "")}_{card_num}";
+			return $"{Regex.Replace(set, @"^0*", "")}_{card_num}";
 		}
 
 		public static Dictionary<string, string> CultureSides = new Dictionary<string, string>()
@@ -150,9 +151,9 @@ namespace GeneratorCSVHandler
 			["shire"] = "Free Peoples",
 			["isengard"] = "Shadow",
 			["dunland"] = "Shadow",
-            ["moria"] = "Shadow",
-            ["moria_balrog"] = "Shadow",
-            ["raider"] = "Shadow",
+			["moria"] = "Shadow",
+			["moria_balrog"] = "Shadow",
+			["raider"] = "Shadow",
 			["sauron"] = "Shadow",
 			["ringwraith"] = "Shadow",
 			["wraith"] = "Shadow",
@@ -167,18 +168,18 @@ namespace GeneratorCSVHandler
 			["uruk hai"] = "Shadow",
 		};
 
-		
+
 		public string GetImagePath(bool errata, bool playtest)
-        {
+		{
 			string mappedSet = SetMap[set_num];
 			if (mappedSet.Length == 2)
 			{
-				if(errata)
-                {
+				if (errata)
+				{
 					return $"errata/{id}.jpg";
 				}
 				else
-                {
+				{
 					if (notes.ToLower().Contains("tengwar"))
 					{
 						return $"decipher/LOTR{mappedSet}{card_num.Value.ToString("000")}T.jpg";
@@ -206,7 +207,7 @@ namespace GeneratorCSVHandler
 		{
 			get
 			{
-				if(!String.IsNullOrWhiteSpace(subtitle))
+				if (!String.IsNullOrWhiteSpace(subtitle))
 				{
 					return $"{title}, {subtitle}";
 				}
@@ -239,13 +240,13 @@ namespace GeneratorCSVHandler
 		{
 			get
 			{
-                if (culture.ToLower().Contains("gollum"))
-                    return "Gollum";
+				if (culture.ToLower().Contains("gollum"))
+					return "Gollum";
 
-                if (culture.ToLower().Contains("moria"))
-                    return "Moria";
+				if (culture.ToLower().Contains("moria"))
+					return "Moria";
 
-                return culture.ToLower().Replace("ringwraith", "wraith").FirstCharUpper();
+				return culture.ToLower().Replace("ringwraith", "wraith").FirstCharUpper();
 			}
 		}
 		public string template { get; set; }
@@ -260,13 +261,56 @@ namespace GeneratorCSVHandler
 		public int? resistance { get; set; }
 		public string signet { get; set; }
 		public string site { get; set; }
+		public string AllyHome()
+		{
+			var homes = new List<string>();
+			foreach(string home in site.Split('&')) 
+			{
+				var match = Regex.Match(home.Trim(), @"(\d)(\w)?");
+				if(!match.Success) 
+					continue;
 
+				string sitenum = match.Groups[1].Value;
+				string blockAbbr = match.Groups[2].Value.ToUpper();
+				string block = "";
+
+                switch (blockAbbr)
+                {
+                    case "K":
+                        block = "king";
+                        break;
+                    case "T":
+                        block = "towers";
+                        break;
+                    case "F":
+                    case "":
+					default:
+                        block = "fellowship";
+                        break;
+                }
+
+				homes.Add($"{block},{sitenum}");
+			}
+
+			return String.Join(",", homes);
+		}
 		public string CollectorsInfo => $"{set_num}{rarity}{card_num}";
 
 		public string set_num { get; set; }
 		public string rarity { get; set; }
 		public int? card_num { get; set; }
 		public string game_text { get; set; }
+
+		public List<string> Keywords()
+		{
+			var text = game_text.Replace("<b>", "").Replace("</b>", "");
+			var matches = Regex.Matches(text, @"(?<![\w>\]] )(?<=( |^))(Hunter \d+|Ambush \(\d+\)|Damage \+\d+|Defender \+\d+|Toil \d+|[\w-]+)\.");
+			if (matches.Count == 0)
+				return new List<string>();
+
+			//Numeric keywords are reduced to Ambush+3, Toil+3, Hunter+3, etc.
+			return matches.Select(x => x.Groups[2].Value.Replace(" +", "+").Replace("(", "").Replace(")", "")).ToList();
+		}
 		public string lore { get; set; }
 
 		public static string SanitizeNanDECKString(string original)

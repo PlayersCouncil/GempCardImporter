@@ -27,7 +27,7 @@ namespace GempCardImporter
 			if(Errata || Playtest)
 			{
 				json += $@"
-			parent: XXPARENTIDXX
+			parentId: XXPARENTIDXX
 			parentPath: {(Errata ? "errata/pc" : "promos/placeholder")}
 ";
 			}
@@ -59,11 +59,10 @@ namespace GempCardImporter
 {(card.resistance.HasValue ? $"\t\tresistance: {card.resistance}" : "")}
 {(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.site}" : "")}
 {(!String.IsNullOrWhiteSpace(card.card_subtype) && !card.card_subtype.ToLower().Contains("support") ? $"\t\titemclass: {card.card_subtype.ToLower().FirstCharUpper()}" : "")}
-		#target: name(Gimli)
-		#keyword: support area";
+		#target: name(Gimli)";
 					break;
 
-				case "the one ring":
+				case "onering":
 				case "follower":
 				case "condition":
 					json += $@"
@@ -71,17 +70,16 @@ namespace GempCardImporter
 {(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
 {(card.resistance.HasValue ? $"\t\tresistance: {card.resistance}" : "")}
 {(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.site}" : "")}
-		#keyword: support area";
+";
 					break;
 
 				case "ally":
 					json += $@"
-{(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tallyHome: fellowship,{card.site}" : "")}
+{(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tallyHome: {card.AllyHome()}" : "")}
 		race: {card.card_subtype.ToLower().FirstCharUpper()}
 {(card.strength.HasValue ? $"\t\tstrength: {card.strength}" : "")}
 {(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
-{(card.resistance.HasValue ? $"\t\tresistance: {card.resistance}" : "")}
-		#keyword: damage+1";
+";
 					break;
 
 				case "companion":
@@ -91,7 +89,7 @@ namespace GempCardImporter
 {(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
 {(!String.IsNullOrWhiteSpace(card.signet) ? $"\t\tsignet: {card.signet.ToLower().FirstCharUpper()}" : "")}
 {(card.resistance.HasValue ? $"\t\tresistance: {card.resistance}" : $"\t\tresistance: 6")}
-		#keyword: damage+1";
+";
 					break;
 
 				case "minion":
@@ -100,12 +98,12 @@ namespace GempCardImporter
 {(card.strength.HasValue ? $"\t\tstrength: {card.strength}" : "")}
 {(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
 {(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.site}" : "")}
-		#keyword: damage+1"; 
+"; 
 					break;
 
 				case "event":
 					json += $@"
-		keyword: {card.card_subtype.ToLower().FirstCharUpper()}";
+		keywords: {card.card_subtype.ToLower().FirstCharUpper()}";
 					break;
 
 				case "site":
@@ -132,9 +130,28 @@ namespace GempCardImporter
 				
 					json += $@"
 		direction: {(card.tags.Contains("right_arrow") ? "Right" : "Left")}
-		#keyword: mountain;";
+";
 					break;
 
+			}
+
+			if(card.card_type != null && card.card_type != "event") //Event keywords are handled above
+			{
+				var keywords = card.Keywords();
+				if(keywords.Count() == 1)
+				{
+                    json += $@"
+		keywords: {keywords.First()}
+";
+                }
+				else if (keywords.Count() > 0)
+                {
+                    json += $@"
+		keywords: [
+			{String.Join("\n\t\t\t", keywords)}
+		]
+";
+                }
 			}
 
 			json += @"
@@ -224,8 +241,8 @@ namespace GempCardImporter
 			}
 			else
             {
-                //java += $"package com.gempukku.lotro.cards.official.set{CardRow.GetSet(card.set_num, false, false)};\n\n";
-                java += $"package com.gempukku.lotro.cards.unofficial.pc.vsets.set_v0{card.set_num.ToLower().Replace("v", "")};\n\n";
+                java += $"package com.gempukku.lotro.cards.official.set{CardRow.GetSet(card.set_num, false, false)};\n\n";
+                //java += $"package com.gempukku.lotro.cards.unofficial.pc.vsets.set_v0{card.set_num.ToLower().Replace("v", "")};\n\n";
 			}
 			java += $@"
 import com.gempukku.lotro.cards.GenericCardTestHelper;
@@ -256,9 +273,7 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 		);
 	}}
 
-	// Uncomment both @Test markers below once this is ready to be used
-
-	//@Test
+	@Test
 	public void {Regex.Replace(card.title, @"[^A-Za-z]", "")}StatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {{
 
 		/**
@@ -320,6 +335,7 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 			java += $@"
 	}}
 
+	// Uncomment any @Test markers below once this is ready to be used
 	//@Test
 	public void {Regex.Replace(card.title, @"[^A-Za-z]", "")}Test1() throws DecisionResultInvalidException, CardNotFoundException {{
 		//Pre-game setup
