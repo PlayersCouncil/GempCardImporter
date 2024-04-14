@@ -77,16 +77,10 @@ namespace GempCardImporter
 		cardInfo: {{
 			imagePath: XXIMAGEPATHXX
 			javaClass: {(Errata || Playtest ? "false" : "true")}
-";
-			if(Errata || Playtest)
-			{
-				json += $@"
-			parentId: XXPARENTIDXX
-			parentPath: {(Errata ? "errata/pc" : "promos/placeholder")}
-";
-			}
-			
-			json += $@"
+			//parentId: XXPARENTIDXX
+			//One of: Variant, Errata, Reprint
+			//parentType: {(Errata ? "Errata" : "Variant")}
+			//parentPath: {(Errata ? "errata/pc" : "alts/promo")}
 			version: XXVERSIONXX
 			collInfo: {card.CollectorsInfo}
 			rarity: {card.rarity}
