@@ -4,6 +4,7 @@ using Microsoft.VisualBasic.CompilerServices;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,6 +17,55 @@ namespace GempCardImporter
 		public static bool Errata = false;
 		public static bool Playtest = false;
 
+		private static string SiteBlockConvert(string site)
+		{
+			if (String.IsNullOrWhiteSpace(site))
+				return "SHADOWS";
+
+			site = site.ToUpper();
+
+			if (site.Contains("T"))
+				return "TWO_TOWERS";
+
+			if (site.Contains("K"))
+				return "KING";
+
+			return "FELLOWSHIP";
+        }
+
+		private static String Enumify(String input)
+		{
+			if (String.IsNullOrWhiteSpace(input))
+				return "";
+
+			return input.ToUpper().Replace(" ", "_").Replace("-", "_");
+		}
+
+		private static String ApplyDynamicArray(string json, string fieldName, string defaultItem, List<string> items)
+		{
+            if (items.Count() == 1)
+            {
+                json += $@"
+		{fieldName}: {items.First()}
+";
+            }
+            else if (items.Count() > 0)
+            {
+                json += $@"
+		{fieldName}: [
+			{String.Join("\n\t\t\t", items)}
+		]
+";
+            }
+            else if(!String.IsNullOrWhiteSpace(defaultItem))
+            {
+                json += $@"
+		#{fieldName}: {defaultItem}
+";
+            }
+
+			return json;
+        }
 		public static string GetJsonObject(CardRow card)
 		{
 			string json = $@"
@@ -41,7 +91,7 @@ namespace GempCardImporter
 			style: Standard
 		}}
 
-		title: {card.title.Replace(@"\", " ").Replace("  ", " ")}
+		title: {card.title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}
 {(!String.IsNullOrWhiteSpace(card.subtitle) ? $"\t\tsubtitle: {card.subtitle.Replace(@"\", " ").Replace("  ", " ")}" : "")}
 		unique: {(card.IsUnique ? "true" : "false")}
 {(card.Side != null ? $"\t\tside: {card.Side}" : "")}
@@ -59,7 +109,14 @@ namespace GempCardImporter
 {(card.resistance.HasValue ? $"\t\tresistance: {card.resistance}" : "")}
 {(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.site}" : "")}
 {(!String.IsNullOrWhiteSpace(card.card_subtype) && !card.card_subtype.ToLower().Contains("support") ? $"\t\titemclass: {card.card_subtype.ToLower().FirstCharUpper()}" : "")}
-		#target: name(Gimli)";
+";
+					var target = card.Target();
+					if (!String.IsNullOrWhiteSpace(target))
+					{
+						json += $@"
+		#target: {target}
+";
+					}
 					break;
 
 				case "onering":
@@ -102,8 +159,8 @@ namespace GempCardImporter
 					break;
 
 				case "event":
-					json += $@"
-		keywords: {card.card_subtype.ToLower().FirstCharUpper()}";
+					var eventKeywords = card.EventKeywords();
+					json = ApplyDynamicArray(json, "keywords", "Regroup", eventKeywords);
 					break;
 
 				case "site":
@@ -137,21 +194,8 @@ namespace GempCardImporter
 
 			if(card.card_type != null && card.card_type != "event") //Event keywords are handled above
 			{
-				var keywords = card.Keywords();
-				if(keywords.Count() == 1)
-				{
-                    json += $@"
-		keywords: {keywords.First()}
-";
-                }
-				else if (keywords.Count() > 0)
-                {
-                    json += $@"
-		keywords: [
-			{String.Join("\n\t\t\t", keywords)}
-		]
-";
-                }
+				var keywords = card.SupportKeywords();
+                json = ApplyDynamicArray(json, "keywords", null, keywords);
 			}
 
 			json += @"
@@ -293,43 +337,112 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 		* Game Text: {card.game_text.Replace("\n", "\n\t\t* ").Replace("\\", "\n\t\t* \t")}
 		*/
 
-		//Pre-game setup
 		var scn = GetScenario();
 
 		var card = scn.GetFreepsCard(""card"");
 
+		assertEquals(""{card.title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}"", card.getBlueprint().getTitle());
+		assertEquals(""{card.subtitle}"", card.getBlueprint().getSubtitle());
 		assert{(card.IsUnique ? "True" : "False")}(card.getBlueprint().isUnique());
-		{(!card.HasCulture() ? "//" : "")}assertEquals(Side.{GetSideEnum(card)}, card.getBlueprint().getSide());
-		{(!card.HasCulture() ? "//" : "")}assertEquals(Culture.{card.SanitizedCulture.ToUpper().Replace("-", "_")}, card.getBlueprint().getCulture());
-		assertEquals(CardType.{(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower()).Replace("onering", "THE_ONE_RING").Replace(" ", "_").ToUpper().Replace("SANCTUARY", "SITE")}, card.getBlueprint().getCardType());
-		{(!card.IsCharacter || String.IsNullOrWhiteSpace(card.card_subtype) ? "//" : "")}assertEquals(Race.{card.card_subtype.ToUpper().Replace("Û", "U").Replace("-", "_")}, card.getBlueprint().getRace());
-		{(!card.IsItem || String.IsNullOrWhiteSpace(card.card_subtype) || card.card_subtype.ToLower().Contains("support") ? "//" : "")}assertTrue(card.getBlueprint().getPossessionClasses().contains(PossessionClass.{card.card_subtype.ToUpper().Replace(" ", "_")}));
-		assertTrue(scn.HasKeyword(card, Keyword.SUPPORT_AREA));
-		{(!card.twilight.HasValue ? "//" : "")}assertEquals({card.twilight}, card.getBlueprint().getTwilightCost());
-		{(!card.strength.HasValue ? "//" : "")}assertEquals({card.strength}, card.getBlueprint().getStrength());
-		{(!card.vitality.HasValue ? "//" : "")}assertEquals({card.vitality}, card.getBlueprint().getVitality());
-		{(!card.resistance.HasValue ? "//" : "")}assertEquals({card.resistance}, card.getBlueprint().getResistance());
-		{(string.IsNullOrWhiteSpace(card.signet) ? "//" : "")}assertEquals(Signet.{card.signet.ToUpper()}, card.getBlueprint().getSignet()); 
-		{(string.IsNullOrWhiteSpace(card.site) ? "//" : "")}assertEquals({card.site.Replace("T", "").Replace("K","")}, card.getBlueprint().{(card.card_type.ToLower() == "ally" ? "getAllyHomeSiteNumbers()[0]" : "getSiteNumber()")});";
+		assertEquals(CardType.{(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower()).Replace("onering", "THE_ONE_RING").Replace(" ", "_").ToUpper().Replace("SANCTUARY", "SITE")}, card.getBlueprint().getCardType());";
+
+            if (card.HasCulture())
+			{
+				java += $@"
+		assertEquals(Side.{GetSideEnum(card)}, card.getBlueprint().getSide());
+		assertEquals(Culture.{Enumify(card.SanitizedCulture)}, card.getBlueprint().getCulture());";
+			}
+
+
+
+			if (card.IsCharacter && !String.IsNullOrWhiteSpace(card.card_subtype))
+			{
+				java += $@"
+		assertEquals(Race.{Enumify(card.card_subtype).Replace("Û", "U")}, card.getBlueprint().getRace());";
+			}
+
+			if(card.IsItem && (!String.IsNullOrWhiteSpace(card.card_subtype) || card.SupportKeywords().Any(x => x.ToLower().Contains("support"))))
+			{
+                java += $@"
+		assertTrue(card.getBlueprint().getPossessionClasses().contains(PossessionClass.{Enumify(card.card_subtype)}));";
+            }
+
+            var keywords = card.SupportKeywords();
+            if (card.IsEvent)
+			{
+				keywords = card.EventKeywords();
+			}
+
+            if (keywords.Count > 0)
+			{
+				foreach (var keyword in keywords)
+				{
+                    java += $@"
+		assertTrue(scn.HasKeyword(card, Keyword.{Enumify(keyword)}));";
+                }
+			}
+
+            if (card.twilight.HasValue)
+            {
+                java += $@"
+		assertEquals({card.twilight}, card.getBlueprint().getTwilightCost());";
+            }
+
+            if (card.strength.HasValue)
+            {
+                java += $@"
+		assertEquals({card.strength}, card.getBlueprint().getStrength());";
+            }
+
+            if (card.vitality.HasValue)
+            {
+                java += $@"
+		assertEquals({card.vitality}, card.getBlueprint().getVitality());";
+            }
+
+            if (card.resistance.HasValue)
+            {
+                java += $@"
+		assertEquals({card.resistance}, card.getBlueprint().getResistance());";
+            }
+            
+            if(!string.IsNullOrWhiteSpace(card.signet))
+			{
+                java += $@"
+		assertEquals(Signet.{Enumify(card.signet)}, card.getBlueprint().getSignet()); ";
+            }
+
+			if(!string.IsNullOrWhiteSpace(card.site))
+			{
+				if(card.IsAlly)
+				{
+					string homes = card.AllyHome();
+					var parts = homes.Split(",");
+                    if (parts.Count() > 0)
+                    {
+                        java += $@"
+		assertEquals({card.SiteNum}, card.getBlueprint().getAllyHomeSiteNumbers()[0]);
+		assertEquals(SitesBlock.{SiteBlockConvert(card.site)}, card.getBlueprint().getAllyHomeSiteBlock());";
+                    }
+                    if (parts.Count() > 2)
+                    {
+                        java += $@"
+		assertEquals({card.SiteNum}, card.getBlueprint().getAllyHomeSiteNumbers()[1]);";
+                    }
+                }
+				else
+				{
+                    java += $@"
+		assertEquals({card.SiteNum}, card.getBlueprint().getSiteNumber());";
+                }
+                
+            }
+            
 
 			if (card.card_type.ToLower() == "site")
 			{
-				if (String.IsNullOrWhiteSpace(card.site))
-				{
-					java += $"\t\tassertEquals(SitesBlock.SHADOWS, card.getBlueprint().getSiteBlock());";
-				}
-				else if (card.site.Contains("T"))
-				{
-					java += $"\t\tassertEquals(SitesBlock.TWO_TOWERS, card.getBlueprint().getSiteBlock());";
-				}
-				else if (card.site.Contains("K"))
-				{
-					java += $"\t\tassertEquals(SitesBlock.KING, card.getBlueprint().getSiteBlock());";
-				}
-				else
-				{
-					java += $"\t\tassertEquals(SitesBlock.FELLOWSHIP, card.getBlueprint().getSiteBlock());";
-				}
+                java += $@"
+		assertEquals(SitesBlock.{SiteBlockConvert(card.site)}, card.getBlueprint().getSiteBlock());";
 			}
 
 			java += $@"
@@ -387,7 +500,7 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 |IsPhysical=no
 |IsPlayable=yes
 |IsUnique={(card.unique.Contains("T") ? "yes" : "no")}
-|Title={card.title.Replace("\\", " ")}
+|Title={card.title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}
 |Subtitle={card.subtitle}
 |Subtypes={card.card_subtype}
 |TwilightCost={card.twilight}

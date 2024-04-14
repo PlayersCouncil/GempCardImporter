@@ -209,10 +209,10 @@ namespace GeneratorCSVHandler
 			{
 				if (!String.IsNullOrWhiteSpace(subtitle))
 				{
-					return $"{title}, {subtitle}";
+					return $"{title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}, {subtitle}";
 				}
 
-				return $"{title}";
+				return $"{title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}";
 			}
 		}
 		public string title { get; set; }
@@ -251,8 +251,10 @@ namespace GeneratorCSVHandler
 		}
 		public string template { get; set; }
 		public string card_type { get; set; }
-		public bool IsCharacter => card_type.ToLower() == "minion" || card_type.ToLower() == "companion" || card_type.ToLower() == "ally";
-		public bool IsItem => card_type.ToLower() == "possession" || card_type.ToLower() == "artifact";
+		public bool IsCharacter => card_type.ToLower() == "minion" || card_type.ToLower() == "companion" || IsAlly;
+		public bool IsAlly => card_type.ToLower() == "ally";
+        public bool IsItem => card_type.ToLower() == "possession" || card_type.ToLower() == "artifact";
+		public bool IsEvent => card_type.ToLower() == "event";
 		public string display_type { get; set; }
 		public string card_subtype { get; set; }
 		public int? twilight { get; set; }
@@ -261,7 +263,10 @@ namespace GeneratorCSVHandler
 		public int? resistance { get; set; }
 		public string signet { get; set; }
 		public string site { get; set; }
-		public string AllyHome()
+
+		public string SiteNum => site.Replace("F", "").Replace("T", "").Replace("K", "");
+
+        public string AllyHome()
 		{
 			var homes = new List<string>();
 			foreach(string home in site.Split('&')) 
@@ -311,6 +316,64 @@ namespace GeneratorCSVHandler
 			//Numeric keywords are reduced to Ambush+3, Toil+3, Hunter+3, etc.
 			return matches.Select(x => x.Groups[2].Value.Replace(" +", "+").Replace("(", "").Replace(")", "")).ToList();
 		}
+
+		public List<string> EventKeywords()
+		{
+			if (card_type.ToLower() != "event")
+				return new List<string>();
+
+            var text = game_text.Replace("<b>", "").Replace("</b>", "");
+            var matches = Regex.Matches(text, @"(Fellowship|Shadow|Maneuver|Archery|Assignment|Skirmish|Regroup):");
+            if (matches.Count == 0)
+                return new List<string>();
+
+            return matches.Select(x => x.Groups[1].Value).ToList();
+        }
+
+		public List<string> SupportKeywords()
+		{
+			var list = Keywords();
+			if(card_subtype.ToLower().Contains("support") || Regex.IsMatch(game_text.ToLower(), @"(plays|play|place) to your support area\."))
+			{
+				list.Add("Support Area");
+			}
+
+			if(tags.ToLower().Contains("ring_bearer"))
+			{
+				list.Add("Can-bear-ring");
+			}
+
+			return list;
+		}
+
+		public String Target()
+		{
+            var text = game_text.Replace("<b>", "").Replace("</b>", "");
+            var matches = Regex.Matches(text, @"(Bearer must be|Plays on) (.*?)\.");
+            if (matches.Count == 0)
+                return null;
+
+			var target = matches[0].Groups[2].Value;
+			if(target.ToLower().StartsWith("a site you control"))
+			{
+				target = "ControlledSite";
+            }
+			else if (target.ToLower().StartsWith("a site"))
+			{
+				target = "site";				
+			}
+            else if (target.ToLower().StartsWith("a ") || target.ToLower().StartsWith("the ") || target.ToLower().StartsWith("that "))
+            {
+				//Do nothing--leave target to be the exact matched text.
+            }
+			else
+			{
+				//Assume it's a name if it made it this far
+				target = $"title({target})";
+			}
+
+			return target;
+        }
 		public string lore { get; set; }
 
 		public static string SanitizeNanDECKString(string original)
