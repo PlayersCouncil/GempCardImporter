@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace GeneratorCSVHandler
 {
@@ -277,12 +278,27 @@ namespace GeneratorCSVHandler
 		public string template { get; set; }
 		public string card_type { get; set; }
 		public bool IsCharacter => card_type.ToLower() == "minion" || card_type.ToLower() == "companion" || IsAlly;
-		public bool IsAlly => card_type.ToLower() == "ally";
+        public bool IsAlly => card_type.ToLower() == "ally";
+        public bool IsMinion => card_type.ToLower() == "minion";
         public bool IsItem => card_type.ToLower() == "possession" || card_type.ToLower() == "artifact";
 		public bool IsEvent => card_type.ToLower() == "event";
+		public bool IsSite => template.ToLower() == "site" || card_type.ToLower() == "sanctuary" || card_type.ToLower() == "site";
+		public bool IsOneRing => template.ToLower() == "onering";
 		public string display_type { get; set; }
-		public string card_subtype { get; set; }
-		public int? twilight { get; set; }
+        public string card_subtype { get; set; }
+		public string EventSubtype {
+			get
+			{
+				if (!String.IsNullOrWhiteSpace(card_subtype))
+					return card_subtype.ToLower().FirstCharUpper();
+
+                var text = game_text.Replace("<b>", "").Replace("</b>", "");
+                var matches = Regex.Matches(text, @"(Fellowship|Shadow|Maneuver|Archery|Assignment|Skirmish|Regroup):");
+
+				return String.Join(", ", matches.Select(x => x.Groups[1].Value).ToList());
+            }
+		} 
+        public int? twilight { get; set; }
 		public int? strength { get; set; }
 		public int? vitality { get; set; }
 		public int? resistance { get; set; }
@@ -334,7 +350,7 @@ namespace GeneratorCSVHandler
 		public List<string> Keywords()
 		{
 			var text = game_text.Replace("<b>", "").Replace("</b>", "");
-			var matches = Regex.Matches(text, @"(?<![\w>\]] )(?<=( |^))(Hunter \d+|Ambush \(\d+\)|Damage \+\d+|Defender \+\d+|Toil \d+|[\w-]+)\.");
+			var matches = Regex.Matches(text, @"(?<![\w>\]\)'] )(?<=( |^))(Hunter \d+|Ambush \(\d+\)|Damage \+\d+|Defender \+\d+|Toil \d+|[\w-]+)\.");
 			if (matches.Count == 0)
 				return new List<string>();
 
@@ -344,20 +360,27 @@ namespace GeneratorCSVHandler
 
 		public List<string> EventKeywords()
 		{
+			var keywords = Keywords();
 			if (card_type.ToLower() != "event")
-				return new List<string>();
+				return keywords;
+
+			if(!String.IsNullOrWhiteSpace(card_subtype))
+			{
+				keywords.Add(card_subtype);
+			}
 
             var text = game_text.Replace("<b>", "").Replace("</b>", "");
-            var matches = Regex.Matches(text, @"(Fellowship|Shadow|Maneuver|Archery|Assignment|Skirmish|Regroup):");
+            var matches = Regex.Matches(text, @"(Fellowship|Shadow|Maneuver|Archery|Assignment|Skirmish|Regroup|Response):");
             if (matches.Count == 0)
-                return new List<string>();
+                return keywords.Distinct().ToList();
 
-            return matches.Select(x => x.Groups[1].Value).ToList();
+			keywords.AddRange(matches.Select(x => x.Groups[1].Value));
+            return keywords.Distinct().ToList();
         }
 
 		public List<string> SupportKeywords()
 		{
-			var list = Keywords();
+			var list = EventKeywords();
 			if(card_subtype.ToLower().Contains("support") || Regex.IsMatch(game_text.ToLower(), @"(plays|play|place) to your support area\."))
 			{
 				list.Add("Support Area");
@@ -365,7 +388,7 @@ namespace GeneratorCSVHandler
 
 			if(tags.ToLower().Contains("ring_bearer"))
 			{
-				list.Add("Can-bear-ring");
+				list.Add("CAN_START_WITH_RING");
 			}
 
 			return list;

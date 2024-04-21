@@ -190,7 +190,7 @@ namespace GempCardImporter
 
 			}
 
-			if(card.card_type != null && card.card_type != "event") //Event keywords are handled above
+			if(card.card_type != null && card.card_type.ToLower() != "event") //Event keywords are handled above
 			{
 				var keywords = card.SupportKeywords();
                 json = ApplyDynamicArray(json, "keywords", null, keywords);
@@ -292,7 +292,6 @@ import com.gempukku.lotro.common.*;
 import com.gempukku.lotro.game.CardNotFoundException;
 import com.gempukku.lotro.game.PhysicalCardImpl;
 import com.gempukku.lotro.logic.decisions.DecisionResultInvalidException;
-import com.gempukku.lotro.logic.modifiers.MoveLimitModifier;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -319,26 +318,49 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 	public void {card.NormalizedTitle}StatsAndKeywordsAreCorrect() throws DecisionResultInvalidException, CardNotFoundException {{
 
 		/**
-		* Set: {card.set_num}
-		* Title: {card.FullName}
-		* Unique: {(card.IsUnique ? "True" : "False")}
-		* Side: {GetSideEnum(card)}
-		* Culture: {card.SanitizedCulture}
-		* Twilight Cost: {card.twilight}
-		* Type: {(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower())}
-		* Subtype: {card.card_subtype}
-{(card.strength.HasValue ? $"\t\t* Strength: " + card.strength.Value.ToString() : "")}
-{(card.vitality.HasValue ? $"\t\t* Vitality: " + card.vitality.Value.ToString() : "")}
-{(card.resistance.HasValue ? $"\t\t* Resistance: " + card.resistance.Value.ToString() : "")}
-{(!string.IsNullOrWhiteSpace(card.signet) ? $"\t\t* Signet: " + card.signet : "")}
-{(!string.IsNullOrWhiteSpace(card.site) ? $"\t\t* Site Number: " + card.site : "")}
-		* Game Text: {card.game_text.Replace("\n", "\n\t\t* ").Replace("\\", "\n\t\t* \t")}
+		 * Set: {card.set_num}
+		 * Name: {card.FullName}
+		 * Unique: {(card.IsUnique ? "True" : "False")}
+		 * Side: {card.Side}
+		 * Culture: {card.SanitizedCulture}
+		 * {(card.IsSite ? "Shadow Number" : "Twilight Cost")}: {card.twilight}
+		 * Type: {(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower().FirstCharUpper() : card.card_type.ToLower().FirstCharUpper())}
+		 * Subtype: {(card.IsEvent ? card.EventSubtype : card.card_subtype.ToLower().FirstCharUpper())}
+{(card.strength.HasValue ? $"\t\t * Strength: " + card.strength.Value.ToString() : "")}
+{(card.vitality.HasValue ? $"\t\t * Vitality: " + card.vitality.Value.ToString() : "")}
+{(card.resistance.HasValue ? $"\t\t * Resistance: " + card.resistance.Value.ToString() : "")}
+{(!string.IsNullOrWhiteSpace(card.signet) ? $"\t\t * Signet: " + card.signet.ToLower().FirstCharUpper() : "")}
+{(card.IsAlly || card.IsSite || card.IsMinion ? $"\t\t * Site Number: " + (!string.IsNullOrWhiteSpace(card.site) ? card.site : "*") : "")}
+		 * Game Text: {card.game_text.Replace("\n", "\n\t\t* ").Replace("\\", "\n\t\t* \t")}
 		*/
 
 		var scn = GetScenario();
-
+";
+			if (card.IsSite)
+			{
+                java += $@"
+		//Use this once you have set the deck up properly
+		//var card = scn.GetFreepsSite({card.SiteNum});
 		var card = scn.GetFreepsCard(""card"");
+";
+            }
+			else if (card.IsOneRing)
+			{
+                java += $@"
+		//Use this once you have set the deck up properly
+		//var card = scn.GetFreepsRing();
+		var card = scn.GetFreepsCard(""card"");
+";
+            }
+			else
+			{
+				java += $@"
+		var card = scn.GetFreepsCard(""card"");
+";
+			}
 
+
+			java += $@"
 		assertEquals(""{card.title.Replace("<br>", " ").Replace(@"\", " ").Replace("  ", " ")}"", card.getBlueprint().getTitle());";
 			if(String.IsNullOrWhiteSpace(card.subtitle))
 			{
@@ -352,8 +374,7 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
             }
 
             java += $@"
-		assert{(card.IsUnique ? "True" : "False")}(card.getBlueprint().isUnique());
-		assertEquals(CardType.{(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower()).Replace("onering", "THE_ONE_RING").Replace(" ", "_").ToUpper().Replace("SANCTUARY", "SITE")}, card.getBlueprint().getCardType());";
+		assert{(card.IsUnique ? "True" : "False")}(card.getBlueprint().isUnique());";
 
             if (card.HasCulture())
 			{
@@ -362,7 +383,8 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 		assertEquals(Culture.{Enumify(card.SanitizedCulture)}, card.getBlueprint().getCulture());";
 			}
 
-
+			java += $@"
+		assertEquals(CardType.{(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower() : card.card_type.ToLower()).Replace("onering", "THE_ONE_RING").Replace(" ", "_").ToUpper().Replace("SANCTUARY", "SITE")}, card.getBlueprint().getCardType());";
 
 			if (card.IsCharacter && !String.IsNullOrWhiteSpace(card.card_subtype))
 			{
@@ -436,13 +458,13 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
                     if (parts.Count() > 0)
                     {
                         java += $@"
-		assertEquals({card.SiteNum}, card.getBlueprint().getAllyHomeSiteNumbers()[0]);
+		assertEquals({parts[1]}, card.getBlueprint().getAllyHomeSiteNumbers()[0]);
 		assertEquals(SitesBlock.{SiteBlockConvert(card.site)}, card.getBlueprint().getAllyHomeSiteBlock());";
                     }
                     if (parts.Count() > 2)
                     {
                         java += $@"
-		assertEquals({card.SiteNum}, card.getBlueprint().getAllyHomeSiteNumbers()[1]);";
+		assertEquals({parts[3]}, card.getBlueprint().getAllyHomeSiteNumbers()[1]);";
                     }
                 }
 				else
@@ -480,7 +502,7 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 }}
 ";
 			java = java.Replace("\r", "");
-			return Regex.Replace(java, "\n\n+", "\n\n").Replace("\n\n\t\t*", "\n\t\t*");
+			return Regex.Replace(java, "\n\n+", "\n\n").Replace("\n\n\t\t *", "\n\t\t *");
 		}
 
 		public static string FormatWikiString(string sheetStr)
@@ -598,7 +620,11 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 				string setNum = CardRow.GetSet(card.set_num, false, false);
                 string set = $"set{setNum}";
 				string java = GetJavaTestFile(card);
-				File.WriteAllText(Path.Combine(path, "tests",  $"Card_{setNum}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests.java"), java);
+
+				var javapath = Path.Combine(path, "tests", $"set{setNum}/Card_{setNum}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests.java");
+				Directory.CreateDirectory(Path.GetDirectoryName(javapath));
+
+                File.WriteAllText(javapath, java);
 
 				string wiki = GetWikiErrataFile(card);
 				File.WriteAllText(Path.Combine(path, "wiki", $"{card.id}.txt"), wiki);
