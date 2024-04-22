@@ -14,7 +14,7 @@ namespace GempCardImporter
 {
 	public class CardFileGenerator
 	{
-		public static bool Errata = false;
+		public static bool Errata = true;
 		public static bool Playtest = false;
 
 		private static string SiteBlockConvert(string site)
@@ -521,11 +521,11 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 			return output;
 
 		}
-		public static string GetWikiErrataFile(CardRow card)
+        public static string GetWikiErrataFile(CardRow card)
         {
-			string errata = "";
+            string errata = "";
 
-			errata += $@"
+            errata += $@"
 {{{{Errata
 |ID={card.id.Replace("_card", "").Replace("E", "S").Replace("SN", "EN")}
 |BaseCardID={Regex.Replace(card.id, @"\.\d+_card", "").Replace("E", "S").Replace("SN", "EN")}.0
@@ -554,10 +554,31 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 }}}}
 
 ";
-			return errata;
+            return errata;
         }
 
-		public static string GetJSFileLine(string gempID, string imagePath, CardRow card)
+
+		public static string GetDiscordSpreadsheetRow(CardRow card)
+		{
+			string tsv = "";
+			// ID, ImageURL, WikiURL, CollInfo, DisplayName, Title, Subtitle, TitleSuffix, Nicknames, Personas
+			tsv += $"{card.id.Replace("_card", "")}\t";
+			tsv += $"https://i.lotrtcgpc.net/{(Errata ? "errata" : "sets/vset2")}/{card.id}.jpg\t";
+			tsv += $"https://wiki.lotrtcgpc.net/wiki/{card.FullName.Replace(" ", "_")}_({card.CollectorsInfo})\t";
+			tsv += $"{card.CollectorsInfo}{(Errata ? "E" : "")}\t";
+            tsv += $"{(card.IsUnique ? "•" : "")}{card.FullName}\t";
+            tsv += $"{CardRow.RemoveDiacritics(card.title)} \t";
+            tsv += $"{CardRow.RemoveDiacritics(card.subtitle)}\t";
+            tsv += $"{(Errata ? "(ERRATA)" : "")}\t";
+            tsv += $"\t";
+            tsv += $"\t";
+
+			tsv += "\n";
+
+            return tsv;
+        }
+
+        public static string GetJSFileLine(string gempID, string imagePath, CardRow card)
 		{
 			string output = "";
 			string baseURL = "https://i.lotrtcgpc.net/";
@@ -611,6 +632,8 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 			string extraPath = ""; //end in / if it's not blank
 
 			string jsfile = "{";
+
+			string discordBot = "ID\tImageURL\tWikiURL\tCollInfo\tDisplayName\tTitle\tSubtitle\tTitleSuffix\tNicknames\tPersonas\n";
             
 			foreach (var card in cards)
 			{
@@ -679,10 +702,14 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 				cardsByCulture[culture][set].Add(json);
 
 				jsfile += GetJSFileLine(gempID, imageName, card);
+
+				discordBot += GetDiscordSpreadsheetRow(card);
             }
 
 			jsfile += "\n}";
             File.WriteAllText(Path.Combine(path,  $"PC_cards_addenda.js"), jsfile);
+
+			File.WriteAllText(Path.Combine(path, "discord_bot_addenda.csv"), discordBot);
 
             foreach (string culture in cardsByCulture.Keys)
 			{

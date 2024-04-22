@@ -205,7 +205,7 @@ namespace GeneratorCSVHandler
 		public string image_name { get; set; }
 		public string unique { get; set; }
 		public bool IsUnique => unique == "T" || unique == "Y";
-        private static string RemoveDiacritics(string text)
+        public static string RemoveDiacritics(string text)
         {
             var normalizedString = text.Normalize(NormalizationForm.FormD);
             var stringBuilder = new StringBuilder(capacity: normalizedString.Length);
@@ -240,7 +240,7 @@ namespace GeneratorCSVHandler
 			}
 		}
 		public string title { get; set; }
-		public string NormalizedTitle => Regex.Replace(RemoveDiacritics(title), @"[^A-Za-z]", "");
+        public string NormalizedTitle => Regex.Replace(RemoveDiacritics(title), @"[^A-Za-z]", "");
 
         public string subtitle { get; set; }
         public string culture { get; set; }
@@ -350,7 +350,7 @@ namespace GeneratorCSVHandler
 		public List<string> Keywords()
 		{
 			var text = game_text.Replace("<b>", "").Replace("</b>", "");
-			var matches = Regex.Matches(text, @"(?<![\w>\]\)'] )(?<=( |^))(Hunter \d+|Ambush \(\d+\)|Damage \+\d+|Defender \+\d+|Toil \d+|[\w-]+)\.");
+			var matches = Regex.Matches(text, @"(?<![\w>\]\),'] )(?<=( |^))(Hunter \d+|Ambush \(\d+\)|Damage \+\d+|Defender \+\d+|Toil \d+|[\w-]+)\.");
 			if (matches.Count == 0)
 				return new List<string>();
 
