@@ -14,8 +14,8 @@ namespace GempCardImporter
 {
 	public class CardFileGenerator
 	{
-		public static bool Errata = true;
-		public static bool Playtest = false;
+		public static bool Errata = false;
+		public static bool Playtest = true;
 
 		private static string SiteBlockConvert(string site)
 		{
@@ -102,56 +102,57 @@ namespace GempCardImporter
 				case "possession":
 				case "artifact":
 					json += $@"
-{(card.strength.HasValue ? $"\t\tstrength: {card.strength}" : "")}
-{(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
-{(card.resistance.HasValue ? $"\t\tresistance: {card.resistance}" : "")}
+{(card.Strength.HasValue ? $"\t\tstrength: {card.Strength}" : "")}
+{(card.Vitality.HasValue ? $"\t\tvitality: {card.Vitality}" : "")}
+{(card.Resistance.HasValue ? $"\t\tresistance: {card.resistance}" : "")}
 {(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.site}" : "")}
 {(!String.IsNullOrWhiteSpace(card.card_subtype) && !card.card_subtype.ToLower().Contains("support") ? $"\t\titemclass: {card.card_subtype.ToLower().FirstCharUpper()}" : "")}
+		#target: {card.Target()}
 ";
-					var target = card.Target();
-					if (!String.IsNullOrWhiteSpace(target))
-					{
-						json += $@"
-		#target: {target}
-";
-					}
+
 					break;
 
 				case "onering":
 				case "follower":
 				case "condition":
 					json += $@"
-{(card.strength.HasValue ? $"\t\tstrength: {card.strength}" : "")}
-{(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
-{(card.resistance.HasValue ? $"\t\tresistance: {card.resistance}" : "")}
+{(card.Strength.HasValue ? $"\t\tstrength: {card.Strength}" : "")}
+{(card.Vitality.HasValue ? $"\t\tvitality: {card.Vitality}" : "")}
+{(card.Resistance.HasValue ? $"\t\tresistance: {card.Resistance}" : "")}
 {(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.site}" : "")}
 ";
+					if(card.IsCondition && !card.SupportKeywords().Contains("Support Area"))
+					{
+						json += $@"
+		#target: {card.Target()}
+";
+					}
 					break;
 
 				case "ally":
 					json += $@"
 {(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tallyHome: {card.AllyHome()}" : "")}
 		race: {card.card_subtype.ToLower().FirstCharUpper()}
-{(card.strength.HasValue ? $"\t\tstrength: {card.strength}" : "")}
-{(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
+{(card.Strength.HasValue ? $"\t\tstrength: {card.Strength}" : "")}
+{(card.Vitality.HasValue ? $"\t\tvitality: {card.Vitality}" : "")}
 ";
 					break;
 
 				case "companion":
 					json += $@"
 		race: {card.card_subtype.ToLower().FirstCharUpper()}
-{(card.strength.HasValue ? $"\t\tstrength: {card.strength}" : "")}
-{(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
+{(card.Strength.HasValue ? $"\t\tstrength: {card.Strength}" : "")}
+{(card.Vitality.HasValue ? $"\t\tvitality: {card.Vitality}" : "")}
 {(!String.IsNullOrWhiteSpace(card.signet) ? $"\t\tsignet: {card.signet.ToLower().FirstCharUpper()}" : "")}
-{(card.resistance.HasValue ? $"\t\tresistance: {card.resistance}" : $"\t\tresistance: 6")}
+{(card.Resistance.HasValue ? $"\t\tresistance: {card.resistance}" : $"\t\tresistance: 6")}
 ";
 					break;
 
 				case "minion":
 					json += $@"
 		race: {card.card_subtype.ToLower().FirstCharUpper()}
-{(card.strength.HasValue ? $"\t\tstrength: {card.strength}" : "")}
-{(card.vitality.HasValue ? $"\t\tvitality: {card.vitality}" : "")}
+{(card.Strength.HasValue ? $"\t\tstrength: {card.Strength}" : "")}
+{(card.Vitality.HasValue ? $"\t\tvitality: {card.Vitality}" : "")}
 {(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.site}" : "")}
 "; 
 					break;
@@ -164,7 +165,7 @@ namespace GempCardImporter
 				case "site":
 				case "sanctuary":
 					json += $@"
-{(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.site}\n" : "")}";
+{(!String.IsNullOrWhiteSpace(card.site) ? $"\t\tsite: {card.SiteNum}\n" : "")}";
 
 					if(String.IsNullOrWhiteSpace(card.site))
                     {
@@ -190,7 +191,7 @@ namespace GempCardImporter
 
 			}
 
-			if(card.card_type != null && card.card_type.ToLower() != "event") //Event keywords are handled above
+			if(card.card_type != null && !card.IsEvent) //Event keywords are handled above
 			{
 				var keywords = card.SupportKeywords();
                 json = ApplyDynamicArray(json, "keywords", null, keywords);
@@ -202,41 +203,47 @@ namespace GempCardImporter
 		}
 ";
 
-			if (card.card_type.ToLower() == "event")
+			if (card.IsEvent)
 			{
 				if(card.card_subtype.ToLower().Contains("response"))
 				{
 					json += @"
+		*/
 		effects: {
 			type: responseEvent
 			trigger: {
 				
 			}
 			cost: {
-				
+				type: SendMessage
+				text: Placeholder effect for development.
 			}
 			effect: [
 				{
-					
+					type: SendMessage
+					text: Placeholder effect for development.
 				}
 			]
-		]*/
+		]
 ";
 				}
 				else
 				{
 					json += @"
+		*/
 		effects: {
 			type: event
 			cost: {
-				
+				type: SendMessage
+				text: Placeholder effect for development.
 			},
 			effect: [
 				{
-					
+					type: SendMessage
+					text: Placeholder effect for development.
 				}
 			]
-		}*/
+		}
 ";
 				}
 				
@@ -283,8 +290,8 @@ namespace GempCardImporter
 			}
 			else
 			{
-				java += $"package com.gempukku.lotro.cards.official.set{CardRow.GetSet(card.set_num, false, false)};\n\n";
-				//java += $"package com.gempukku.lotro.cards.unofficial.pc.vsets.set_v0{card.set_num.ToLower().Replace("v", "")};\n\n";
+				//java += $"package com.gempukku.lotro.cards.official.set{CardRow.GetSet(card.set_num, false, false)};\n\n";
+				java += $"package com.gempukku.lotro.cards.unofficial.pc.vsets.set_{CardRow.SetMap[card.set_num]};\n\n";
 			}
 			java += $@"
 import com.gempukku.lotro.cards.GenericCardTestHelper;
@@ -298,7 +305,7 @@ import java.util.HashMap;
 
 import static org.junit.Assert.*;
 
-public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests
+public class Card_{CardRow.GetPaddedSet(card.set_num)}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests
 {{
 
 	protected GenericCardTestHelper GetScenario() throws CardNotFoundException, DecisionResultInvalidException {{
@@ -326,9 +333,9 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 		 * {(card.IsSite ? "Shadow Number" : "Twilight Cost")}: {card.twilight}
 		 * Type: {(String.IsNullOrWhiteSpace(card.card_type) ? card.template.ToLower().FirstCharUpper() : card.card_type.ToLower().FirstCharUpper())}
 		 * Subtype: {(card.IsEvent ? card.EventSubtype : card.card_subtype.ToLower().FirstCharUpper())}
-{(card.strength.HasValue ? $"\t\t * Strength: " + card.strength.Value.ToString() : "")}
-{(card.vitality.HasValue ? $"\t\t * Vitality: " + card.vitality.Value.ToString() : "")}
-{(card.resistance.HasValue ? $"\t\t * Resistance: " + card.resistance.Value.ToString() : "")}
+{(card.Strength.HasValue ? $"\t\t * Strength: " + card.Strength.Value.ToString() : "")}
+{(card.Vitality.HasValue ? $"\t\t * Vitality: " + card.Vitality.Value.ToString() : "")}
+{(card.Resistance.HasValue ? $"\t\t * Resistance: " + card.Resistance.Value.ToString() : "")}
 {(!string.IsNullOrWhiteSpace(card.signet) ? $"\t\t * Signet: " + card.signet.ToLower().FirstCharUpper() : "")}
 {(card.IsAlly || card.IsSite || card.IsMinion ? $"\t\t * Site Number: " + (!string.IsNullOrWhiteSpace(card.site) ? card.site : "*") : "")}
 		 * Game Text: {card.game_text.Replace("\n", "\n\t\t* ").Replace("\\", "\n\t\t* \t")}
@@ -425,19 +432,19 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 		assertEquals({card.twilight}, card.getBlueprint().getTwilightCost());";
             }
 
-            if (card.strength.HasValue)
+            if (card.Strength.HasValue)
             {
                 java += $@"
 		assertEquals({card.strength}, card.getBlueprint().getStrength());";
             }
 
-            if (card.vitality.HasValue)
+            if (card.Vitality.HasValue)
             {
                 java += $@"
 		assertEquals({card.vitality}, card.getBlueprint().getVitality());";
             }
 
-            if (card.resistance.HasValue)
+            if (card.Resistance.HasValue)
             {
                 java += $@"
 		assertEquals({card.resistance}, card.getBlueprint().getResistance());";
@@ -640,11 +647,12 @@ public class Card_{CardRow.GetSet(card.set_num, Errata, Playtest)}_{card.card_nu
 				if (String.IsNullOrWhiteSpace(card.title))
 					continue;
 
+				string setName = CardRow.GetPaddedSet(card.set_num);
 				string setNum = CardRow.GetSet(card.set_num, false, false);
                 string set = $"set{setNum}";
 				string java = GetJavaTestFile(card);
 
-				var javapath = Path.Combine(path, "tests", $"set{setNum}/Card_{setNum}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests.java");
+				var javapath = Path.Combine(path, "tests", $"set{setName}/Card_{setName}_{card.card_num.Value.ToString("000")}_{(Errata ? "Errata" : "")}Tests.java");
 				Directory.CreateDirectory(Path.GetDirectoryName(javapath));
 
                 File.WriteAllText(javapath, java);

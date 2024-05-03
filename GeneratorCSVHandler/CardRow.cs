@@ -16,9 +16,9 @@ namespace GeneratorCSVHandler
 	{
 		public static Dictionary<string, string> SetMap = new Dictionary<string, string>()
 		{
-			["V0"] = "100",
-			["V1"] = "101",
-			["V2"] = "102",
+			["V0"] = "v00",
+			["V1"] = "v01",
+			["V2"] = "v02",
 			["0"] = "00",
 			["1"] = "01",
 			["2"] = "02",
@@ -103,6 +103,14 @@ namespace GeneratorCSVHandler
 			["V2"] = "V2",
 		};
 
+		public static string GetPaddedSet(string set)
+		{
+			if (set.Contains("V"))
+				return set;
+
+			return CardRow.SetMap[set];
+		}
+
 		public static string GetSet(string set, bool errata, bool playtest)
 		{
 			if (errata && playtest)
@@ -139,6 +147,9 @@ namespace GeneratorCSVHandler
 
 			if (set == "00")
 				return $"0_{card_num}";
+
+			if (set.Contains("v"))
+				return $"{ErrataSetMap[set_num]}_{card_num}";
 
 			return $"{Regex.Replace(set, @"^0*", "")}_{card_num}";
 		}
@@ -280,6 +291,7 @@ namespace GeneratorCSVHandler
 		public bool IsCharacter => card_type.ToLower() == "minion" || card_type.ToLower() == "companion" || IsAlly;
         public bool IsAlly => card_type.ToLower() == "ally";
         public bool IsMinion => card_type.ToLower() == "minion";
+        public bool IsCondition => card_type.ToLower() == "condition";
         public bool IsItem => card_type.ToLower() == "possession" || card_type.ToLower() == "artifact";
 		public bool IsEvent => card_type.ToLower() == "event";
 		public bool IsSite => template.ToLower() == "site" || card_type.ToLower() == "sanctuary" || card_type.ToLower() == "site";
@@ -297,12 +309,17 @@ namespace GeneratorCSVHandler
 
 				return String.Join(", ", matches.Select(x => x.Groups[1].Value).ToList());
             }
-		} 
+		}
         public int? twilight { get; set; }
-		public int? strength { get; set; }
-		public int? vitality { get; set; }
-		public int? resistance { get; set; }
-		public string signet { get; set; }
+
+        public string strength { get; set; }
+        public string vitality { get; set; }
+        public string resistance { get; set; }
+
+		public int? Strength => string.IsNullOrWhiteSpace(strength) ? null : (int?) int.Parse(strength.Replace("+", ""));
+        public int? Vitality => string.IsNullOrWhiteSpace(vitality) ? null : (int?)int.Parse(vitality.Replace("+", ""));
+        public int? Resistance => string.IsNullOrWhiteSpace(resistance) ? null : (int?)int.Parse(resistance.Replace("+", ""));
+        public string signet { get; set; }
 		public string site { get; set; }
 
 		public string SiteNum => site.Replace("F", "").Replace("T", "").Replace("K", "");
